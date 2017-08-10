@@ -61,10 +61,13 @@ public class SourceFileReader {
     RemoteIterator<LocatedFileStatus> rit = fs.listFiles(pt, false);
     Vector<FSDataInputStream> fileHandleList = new Vector<FSDataInputStream>();
     while (rit.hasNext()) {
+     
       Path path = rit.next().getPath();
+      System.out.println(path.getName().toString());
 
       // Only read those files start with "part-"
       if (path.getName().startsWith("part-")) {
+        System.out.println("while if");
         long fileSize = fs.getFileStatus(path).getLen();
         if (offset < fileSize) {
           FSDataInputStream inputStream = fs.open(path);

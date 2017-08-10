@@ -25,6 +25,7 @@ import com.intel.hibench.sparkbench.streaming.application._
 import kafka.serializer.StringDecoder
 import org.apache.spark.SparkConf
 import org.apache.spark.streaming.dstream.DStream
+//import org.apache.spark.streaming.kafka010.KafkaUtils
 import org.apache.spark.streaming.kafka.KafkaUtils
 import org.apache.spark.streaming.{Milliseconds, StreamingContext}
 
@@ -98,8 +99,8 @@ object RunBench {
       // direct mode with low level Kafka API
       KafkaUtils.createDirectStream[String, String, StringDecoder, StringDecoder](
         ssc, config.kafkaParams, Set(config.sourceTopic))
-
-    } else {
+      //System.out.println("Direct Mode not supported");
+      } else {
       // receiver mode with high level Kafka API
       val kafkaInputs = (1 to config.receiverNumber).map{ _ =>
         KafkaUtils.createStream[String, String, StringDecoder, StringDecoder](

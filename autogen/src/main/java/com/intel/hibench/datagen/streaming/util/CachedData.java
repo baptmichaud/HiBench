@@ -18,11 +18,14 @@
 package com.intel.hibench.datagen.streaming.util;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.security.UserGroupInformation;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 /**
  * Cache the total records in memory.
@@ -50,6 +53,18 @@ public class CachedData {
   private CachedData(String seedFile, long fileOffset, String dfsMaster){
     Configuration dfsConf = new Configuration();
     dfsConf.set("fs.default.name", dfsMaster);
+    dfsConf.set("hadoop.security.authentication", "kerberos");
+    dfsConf.set("dfs.namenode.kerberos.principal", "nn/_HOST@HDP.DSMAIN.DS.CORP");
+    dfsConf.addResource("/etc/hadoop/conf/core-site.xml"); // Replace with actual path
+    dfsConf.addResource("/etc/hadoop/conf/hdfs-site.xml"); // Replace with actual path
+
+    UserGroupInformation.setConfiguration(dfsConf);
+    // Subject is taken from current user context
+    try{
+       UserGroupInformation.loginUserFromSubject(null);
+    }catch(IOException e){
+       e.printStackTrace();
+    }
 
     // read records from seedFile and cache into "data"
     data = new ArrayList<String>();
@@ -57,6 +72,7 @@ public class CachedData {
     String line = null;
     try {
       while ((line = reader.readLine()) != null) {
+        // System.out.println("read");
         data.add(line);
       }
     } catch (IOException e) {

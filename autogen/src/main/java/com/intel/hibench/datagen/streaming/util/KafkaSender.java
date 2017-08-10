@@ -17,6 +17,7 @@
 
 package com.intel.hibench.datagen.streaming.util;
 
+import java.util.Random;
 import java.util.Arrays;
 import java.util.Properties;
 
@@ -41,16 +42,30 @@ public class KafkaSender {
       long fileOffset, String dfsMaster, int recordLength, int intervalSpan) {
 
     // Details of KafkaProducerConfig could be find from:
-    //   http://kafka.apache.org/documentation.html#producerconfigs
+    // http://kafka.apache.org/documentation.html#producerconfigs
+    // Properties props = new Properties();
+    //props.setProperty("sasl.kerberos.service.name", "kafka");    
+    //props.setProperty("security.protocol", "SASL_PLAINTEXT");
+    //props.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, brokerList);
+    //props.setProperty(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.ByteArraySerializer");
+    //props.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.ByteArraySerializer");
+    //props.setProperty(ProducerConfig.ACKS_CONFIG, "1");
+    //props.getProperty(ProducerConfig.CLIENT_ID_CONFIG, "DataGenerator");*/
+      
     Properties props = new Properties();
-    props.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, brokerList);
-    props.setProperty(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
-        "org.apache.kafka.common.serialization.ByteArraySerializer");
-    props.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
-        "org.apache.kafka.common.serialization.ByteArraySerializer");
-    props.setProperty(ProducerConfig.ACKS_CONFIG, "1");
-    props.getProperty(ProducerConfig.CLIENT_ID_CONFIG, "DataGenerator");
-    this.kafkaProducer = new KafkaProducer(props);
+    props.put("bootstrap.servers", brokerList);
+    System.out.println("Servers:" + brokerList);
+
+    // specify the protocol for SSL Encryption
+    props.put("security.protocol", "SASL_PLAINTEXT");
+    props.put("metadata.broker.list", brokerList);
+    props.put("acks", "all");
+    props.put(ProducerConfig.RETRIES_CONFIG, 0);
+    props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.ByteArraySerializer");
+    props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.ByteArraySerializer");
+    props.put("sasl.kerberos.service.name", "kafka");
+
+    this.kafkaProducer = new KafkaProducer<String, String>(props);
 
     this.cachedData = CachedData.getInstance(seedFile, fileOffset, dfsMaster);
     this.recordLength = recordLength;
@@ -61,10 +76,28 @@ public class KafkaSender {
   // Print error message if exception exist.
   Callback callback = new Callback() {
     public void onCompletion(RecordMetadata metadata, Exception e) {
-      if (e != null)
-        e.printStackTrace();
+           if (e != null) {
+               System.out.println("Error while producing message to topic :" + metadata);
+               e.printStackTrace();
+           } else {
+               String message = String.format("sent message to topic:%s partition:%s  offset:%s", metadata.topic(), metadata.partition(), metadata.offset());
+               System.out.println(message);
+           }
     }
   };
+
+   private static class TestCallback implements Callback {
+       @Override
+       public void onCompletion(RecordMetadata recordMetadata, Exception e) {
+           if (e != null) {
+               System.out.println("Error while producing message to topic :" + recordMetadata);
+               e.printStackTrace();
+           } else {
+               String message = String.format("sent message to topic:%s partition:%s  offset:%s", recordMetadata.topic(), recordMetadata.partition(), recordMetadata.offset());
+               System.out.println(message);
+           }
+       }
+   }
 
   // send content to Kafka
   public long send (String topic, long targetRecords, boolean debugMode) {
@@ -74,7 +107,9 @@ public class KafkaSender {
 
     while (sentRecords < targetRecords) {
       String line = cachedData.getRecord();
-      String currentTime = Long.toString(System.currentTimeMillis());
+
+        System.out.println(line);
+       String currentTime = Long.toString(System.currentTimeMillis());
 
       // Key and Value will be serialized twice.
       // 1. in producer.send method
@@ -82,11 +117,23 @@ public class KafkaSender {
       byte[] keyByte = serializer.serialize(topic, currentTime);
       byte[] valueByte = fillArray(keyByte, serializer.serialize(topic, line));
 
+      TestCallback callback = new TestCallback();
+      //Random rnd = new Random();
+      //for (long i = 0; i < 100 ; i++) {
+      //   ProducerRecord<String, String> data = new ProducerRecord<String, String>(
+      //           topic, "key-" + i, "message-"+i );
+      //   kafkaProducer.send(data, callback);
+      // }
+
+      //kafkaProducer.close();
+
       ProducerRecord serializedRecord = new ProducerRecord(topic, keyByte, valueByte);
+      //System.out.println(serializedRecord);
       kafkaProducer.send(serializedRecord, callback);
 
       //update counter
       sentRecords++;
+      //System.out.println(sentRecords);
       sentBytes = sentBytes + keyByte.length + valueByte.length;
     }
 

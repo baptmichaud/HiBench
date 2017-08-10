@@ -54,7 +54,10 @@ case class SparkBenchConfig (
   def kafkaParams = Map (
     "group.id" -> consumerGroup,
     "zookeeper.connect" -> zkHost,
-    "metadata.broker.list" -> brokerList
+    "metadata.broker.list" -> brokerList,
+    "security.protocol" -> "SASL_PLAINTEXT",
+    "bootstrap.servers" -> brokerList,
+    "sasl.kerberos.service.name" -> "kafka"
   )
 
   def threadsPerReceiver = coreNumber / receiverNumber
