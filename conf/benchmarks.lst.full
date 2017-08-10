@@ -8,7 +8,7 @@ sql.aggregation
 sql.join
 sql.scan
 
-#websearch.nutchindexing
+websearch.nutchindexing
 websearch.pagerank
 
 ml.bayes
@@ -19,4 +19,4 @@ ml.gbt
 ml.rf
 ml.svd
 
-#graph.nweight
+graph.nweight
